@@ -1,8 +1,6 @@
-# Файл: bot_logic.py
 import os
 import sys
 import time
-import atexit
 import sqlite3
 import yaml
 import feedparser
@@ -11,41 +9,22 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 # --- НАСТРОЙКА И КОНСТАНТЫ ---
-
-# Загружаем .env файл.
 load_dotenv()
 
-# Абсолютные пути к файлам. Замените 'Djamshid1976' на ваше имя пользователя.
-PROJECT_PATH = "/home/Djamshid1976/uz_news_bot"
-PID_FILE = os.path.join(PROJECT_PATH, "bot.pid")
-DB_FILE = os.path.join(PROJECT_PATH, "news.db")
-SOURCES_FILE = os.path.join(PROJECT_PATH, "sources.yml")
+# Определяем пути относительно текущего файла. Это будет работать везде.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(SCRIPT_DIR, "news.db")
+SOURCES_FILE = os.path.join(SCRIPT_DIR, "sources.yml")
 
 # Получение настроек из переменных окружения
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-KEYWORDS = os.getenv("KEYWORDS", "iqtisodiyot, texnologiya, siyosat") # Ключевые слова по умолчанию
+KEYWORDS = os.getenv("KEYWORDS", "iqtisodiyot, texnologiya, siyosat")
 
-# --- ЛОГИКА УПРАВЛЕНИЯ ПРОЦЕССОМ (PID) ---
+# --- ЛОГИКА PID-ФАЙЛОВ ПОЛНОСТЬЮ УДАЛЕНА ---
 
-def create_pid_file():
-    if os.path.exists(PID_FILE):
-        print("PID-файл уже существует. Выход.")
-        sys.exit(1)
-    pid = str(os.getpid())
-    with open(PID_FILE, 'w') as f:
-        f.write(pid)
-    print(f"Бот запущен с PID: {pid}.")
-
-def remove_pid_file():
-    if os.path.exists(PID_FILE):
-        os.remove(PID_FILE)
-        print("PID-файл удален.")
-
-atexit.register(remove_pid_file)
-
-# --- РАБОТА С БАЗОЙ ДАННЫХ ---
+# --- РАБОТА С БАЗОЙ ДАННЫХ (без изменений) ---
 
 def db_init():
     """Инициализирует БД и создает таблицу, если её нет."""
@@ -78,16 +57,15 @@ def add_to_posted(article_id, title, url, source):
                        (article_id, title, url, source))
         conn.commit()
 
-# --- ОСНОВНАЯ ЛОГИКА БОТА ---
+# --- ОСНОВНАЯ ЛОГИКА БОТА (без изменений) ---
 
 def translate_and_summarize(client, article):
     """Переводит и обобщает новость с помощью OpenAI."""
     if not client:
         return f"<b>{article['title']}</b>\n\n{article.get('summary', 'Summary not available.')}"
-
     prompt = f"""
-    Translate the following news article title and summary into Uzbek.
-    Focus on these topics: {KEYWORDS}.
+    Translate the following news article title and summary into Uzbek (Cyrillic script).
+    The translation must be in the Uzbek Cyrillic alphabet (ўзбек кирилл алифбосида).
     The summary should be concise, neutral, and informative, about 2-3 sentences long.
     Format the output exactly as follows:
     TITLE: [Uzbek title]
@@ -108,37 +86,38 @@ def translate_and_summarize(client, article):
         return f"<b>{title}</b>\n\n{summary}"
     except Exception as e:
         print(f"Ошибка OpenAI: {e}")
-        # В случае ошибки возвращаем просто заголовок
         return f"<b>{article['title']}</b>"
-
 
 def do_one_cycle(bot, openai_client):
     """Выполняет один цикл работы: сбор, обработка и постинг новостей."""
     print("Начинаю новый цикл...")
     
-    # 1. Загружаем источники
     with open(SOURCES_FILE, 'r') as f:
         sources = yaml.safe_load(f)['sources']
 
-    # 2. Получаем ID уже опубликованных новостей
     posted_ids = get_posted_ids()
     print(f"В базе {len(posted_ids)} уже опубликованных новостей.")
 
-    # 3. Собираем все новые статьи
     new_articles = []
     for source in sources:
         print(f"Проверяю источник: {source['name']}")
-        feed = feedparser.parse(source['url'])
-        for entry in feed.entries:
-            article_id = entry.get('guid', entry.link)
-            if article_id not in posted_ids:
-                new_articles.append({
-                    'id': article_id,
-                    'title': entry.title,
-                    'link': entry.link,
-                    'summary': entry.get('summary', ''),
-                    'source_name': source['name']
-                })
+        try:
+            feed = feedparser.parse(source['url'])
+            if feed.bozo:
+                raise Exception(f"Bozo feed detected: {feed.bozo_exception}")
+            for entry in feed.entries:
+                article_id = entry.get('guid', entry.link)
+                if article_id not in posted_ids:
+                    new_articles.append({
+                        'id': article_id,
+                        'title': entry.title,
+                        'link': entry.link,
+                        'summary': entry.get('summary', ''),
+                        'source_name': source['name']
+                    })
+        except Exception as e:
+            print(f"❌ Ошибка при проверке источника {source['name']}: {e}")
+            continue
 
     if not new_articles:
         print("Новых статей не найдено.")
@@ -146,8 +125,7 @@ def do_one_cycle(bot, openai_client):
 
     print(f"Найдено {len(new_articles)} новых статей. Начинаю обработку...")
 
-    # 4. Обрабатываем и публикуем каждую новую статью
-    for article in reversed(new_articles): # Публикуем сначала старые
+    for article in reversed(new_articles):
         processed_text = translate_and_summarize(openai_client, article)
         
         message = (
@@ -160,7 +138,7 @@ def do_one_cycle(bot, openai_client):
             bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode='HTML')
             print(f"✅ Опубликовано: {article['title']}")
             add_to_posted(article['id'], article['title'], article['link'], article['source_name'])
-            time.sleep(10) # Небольшая задержка между постами
+            time.sleep(10)
         except Exception as e:
             print(f"❌ Ошибка публикации: {e}")
 
@@ -168,10 +146,9 @@ def do_one_cycle(bot, openai_client):
 # --- ГЛАВНЫЙ ЦИКЛ ---
 
 if __name__ == "__main__":
-    create_pid_file()
-    
     if not TELEGRAM_BOT_TOKEN or not CHANNEL_ID:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN и CHANNEL_ID должны быть установлены.")
+        print("Критическая ошибка: TELEGRAM_BOT_TOKEN и CHANNEL_ID должны быть установлены.", file=sys.stderr)
+        sys.exit(1)
     
     db_init()
     
@@ -181,7 +158,7 @@ if __name__ == "__main__":
     if openai_instance:
         print("Клиент OpenAI инициализирован.")
     else:
-        print("API ключ OpenAI не найден, перевод и обобщение будут пропущены.")
+        print("API ключ OpenAI не найден, перевод будет пропущен.")
 
     try:
         post_interval_minutes = int(os.getenv("POST_INTERVAL_MINUTES", 15))
@@ -196,5 +173,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Получен сигнал прерывания. Завершение работы...")
     except Exception as e:
-        print(f"Произошла критическая ошибка: {e}")
+        print(f"Произошла критическая ошибка в главном цикле: {e}", file=sys.stderr)
         sys.exit(1)
