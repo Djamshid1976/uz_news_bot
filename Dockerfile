@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 5. Копируем все остальные файлы проекта
 COPY . .
 
-# Команда для запуска (будет переопределена в настройках Render)
-# CMD ["gunicorn", "webapp:app"]
+# 6. Команда для запуска бота при старте контейнера
+CMD ["python3", "bot_logic.py"]
