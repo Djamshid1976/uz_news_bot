@@ -1,4 +1,4 @@
-# Файл: webapp.py (Финальная исправленная версия)
+# Файл: webapp.py (Финальная стабильная версия)
 import os
 import sys
 import sqlite3
@@ -34,10 +34,6 @@ def db_init():
                 message_id INTEGER, posted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # Эта таблица для будущей интерактивности, пока не используется
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS articles (id TEXT PRIMARY KEY, full_text_en TEXT)
-        """)
         conn.commit()
 
 def get_posted_ids():
@@ -55,14 +51,8 @@ def add_to_posted(article_id, title, url, source, message_id):
 
 # --- ЛОГИКА БОТА ---
 def translate_text(text_to_translate):
-    """
-    Отправляет текст в OpenAI и возвращает перевод на узбекскую кириллицу.
-    """
     if not openai_client:
-        print(">>> OpenAI клиент не настроен, перевод пропускается.")
         return text_to_translate
-
-    print(f">>> Отправляю на перевод: \"{text_to_translate[:50]}...\"")
     try:
         prompt = f"""
         Translate the following news title into Uzbek (Cyrillic script).
@@ -76,15 +66,12 @@ def translate_text(text_to_translate):
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
-        translated_text = completion.choices[0].message.content.strip()
-        print(f">>> Перевод получен: \"{translated_text[:50]}...\"")
-        return translated_text
+        return completion.choices[0].message.content.strip()
     except Exception as e:
         print(f">>> ОШИБКА OpenAI при переводе: {e}", file=sys.stderr)
         return f"[ОШИБКА ПЕРЕВОДА] {text_to_translate}"
 
 def check_and_post_news():
-    """Главная функция: ищет, переводит и постит новости."""
     print("\n--- НАЧАЛО ЦИКЛА ПРОВЕРКИ НОВОСТЕЙ ---")
     db_init()
     
@@ -101,7 +88,7 @@ def check_and_post_news():
 
     new_articles = []
     for source in sources:
-        print(f">>> Проверяю источник: {source.get('name_uz', 'Неизвестный источник')}")
+        print(f">>> Проверяю источник: {source.get('name_uz', source.get('name', 'Неизвестный источник'))}")
         try:
             feed = feedparser.parse(source['url'])
             for entry in feed.entries:
@@ -111,7 +98,7 @@ def check_and_post_news():
                         'id': article_id,
                         'title': entry.title,
                         'link': entry.link,
-                        'source_name_uz': source.get('name_uz', 'Неизвестный источник'),
+                        'source_name_uz': source.get('name_uz', source.get('name')),
                     })
         except Exception as e:
             print(f">>> ОШИБКА при парсинге RSS {source['url']}: {e}", file=sys.stderr)
@@ -120,10 +107,13 @@ def check_and_post_news():
         print("--- Новых статей не найдено. Цикл завершен. ---\n")
         return "Новых статей не найдено."
 
-    print(f"\n>>> Всего найдено {len(new_articles)} новых статей. Начинаю публикацию...")
+    # *** ГЛАВНОЕ ИЗМЕНЕНИЕ: ОГРАНИЧИВАЕМ КОЛИЧЕСТВО ПОСТОВ ЗА РАЗ ***
+    articles_to_post = new_articles[:5] # Берем только первые 5 новостей
+    
+    print(f"\n>>> Всего найдено {len(new_articles)} новых статей. Будет опубликовано {len(articles_to_post)}.")
     
     published_count = 0
-    for article in reversed(new_articles):
+    for article in reversed(articles_to_post):
         try:
             title_uz = translate_text(article['title'])
             
@@ -133,7 +123,6 @@ def check_and_post_news():
                 f"<a href='{article['link']}'>Батафсил</a>"
             )
             
-            print(f">>> Отправляю сообщение в канал {CHANNEL_ID}...")
             sent_message = bot.send_message(
                 chat_id=CHANNEL_ID,
                 text=message_text,
