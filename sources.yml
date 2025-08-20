@@ -5,7 +5,7 @@ sources:
   - name: Би-би-си: Мир
     url: http://feeds.bbci.co.uk/news/world/rss.xml
     lang: en
-  - name: Ассошиэйтеഡ് പ്രസ്സ്: Мир
+  - name: Ассошиэйтед пресс: Мир
     url: https://apnews.com/hub/apf-worldnews?output=rss
     lang: en
   - name: The Guardian: World
