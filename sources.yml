@@ -1,25 +1,32 @@
 sources:
-  - name: Рейтер: Мир
-    url: https://www.reuters.com/world/rss
+  - name: "Рейтер: Мир"
+    url: "https://www.reuters.com/world/rss"
     lang: en
-  - name: Би-би-си: Мир
-    url: http://feeds.bbci.co.uk/news/world/rss.xml
+
+  - name: "Би-би-си: Мир"
+    url: "http://feeds.bbci.co.uk/news/world/rss.xml"
     lang: en
-  - name: Ассошиэйтед Пресс: Мир
-    url: https://apnews.com/hub/apf-worldnews?output=rss
+
+  - name: "Ассошиэйтед Пресс: Мир"
+    url: "https://apnews.com/hub/apf-worldnews?output=rss"
     lang: en
-  - name: The Guardian: World
-    url: https://www.theguardian.com/world/rss
+
+  - name: "The Guardian: World"
+    url: "https://www.theguardian.com/world/rss"
     lang: en
-  - name: Al Jazeera English
-    url: https://www.aljazeera.com/xml/rss/all.xml
+
+  - name: "Al Jazeera English"
+    url: "https://www.aljazeera.com/xml/rss/all.xml"
     lang: en
-  - name: CNN: World
-    url: http://rss.cnn.com/rss/edition_world.rss
+
+  - name: "CNN: World"
+    url: "http://rss.cnn.com/rss/edition_world.rss"
     lang: en
-  - name: Euronews: World
-    url: https://www.euronews.com/rss?level=theme&name=news
+
+  - name: "Euronews: World"
+    url: "https://www.euronews.com/rss?level=theme&name=news"
     lang: en
-  - name: The Economist: Latest
-    url: https://www.economist.com/latest/rss.xml
+
+  - name: "The Economist: Latest"
+    url: "https://www.economist.com/latest/rss.xml"
     lang: en
