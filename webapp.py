@@ -115,7 +115,7 @@ def check_and_post_news():
     published_count = 0
     for article in reversed(articles_to_post):
         try:
-            title_uz = translate_text(article['title'])
+            title_uz = article['title'] # ВРЕМЕННО ОТКЛЮЧАЕМ ПЕРЕВОД
             
             message_text = (
                 f"<b>{title_uz}</b>\n\n"
