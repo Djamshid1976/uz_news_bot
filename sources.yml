@@ -17,7 +17,7 @@ sources:
   - name: CNN: World
     url: http://rss.cnn.com/rss/edition_world.rss
     lang: en
-  - name: Euronenews: World
+  - name: Euronews: World
     url: https://www.euronews.com/rss?level=theme&name=news
     lang: en
   - name: The Economist: Latest
