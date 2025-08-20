@@ -5,7 +5,7 @@ sources:
   - name: Би-би-си: Мир
     url: http://feeds.bbci.co.uk/news/world/rss.xml
     lang: en
-  - name: Ассошиэйтед пресс: Мир
+  - name: Ассошиэйтед Пресс: Мир
     url: https://apnews.com/hub/apf-worldnews?output=rss
     lang: en
   - name: The Guardian: World
@@ -17,7 +17,7 @@ sources:
   - name: CNN: World
     url: http://rss.cnn.com/rss/edition_world.rss
     lang: en
-  - name: Euronenews: World
+  - name: Euronews: World
     url: https://www.euronews.com/rss?level=theme&name=news
     lang: en
   - name: The Economist: Latest
